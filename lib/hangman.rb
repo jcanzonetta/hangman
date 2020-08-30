@@ -1,25 +1,33 @@
-txt = File.open("5desk.txt")
+require "yaml"
 
-dict = txt.readlines.map(&:chomp)
-dict_size = dict.length
+def get_dict
+    txt = File.open("5desk.txt")
+    return txt.readlines.map(&:chomp)
+end
 
+dict = get_dict()
 
 class Game
+    attr_reader :game_word, :displayed_word, :turns
 
-    def initialize
-        @dict = get_dict
-        @game_word = get_game_word()
+    def initialize(dict)
+        @game_word = get_game_word(dict)
         @displayed_word = Array.new(@game_word.length, "_")
         @turns = 6
         @game_over = false
         @used_letters = []
+    end
 
-        game_loop()
+    def load_game
+        save_game = File.open("save_game.yaml", "r") do |object|
+            YAML.load(object)
+        end
+        return save_game
     end
 
     def game_loop
         render_word_canvas()
-
+        puts "To save the game at any time, enter (1)."
         while @game_over == false
             letter = get_letter()
             store_letter(letter)
@@ -32,6 +40,13 @@ class Game
         end
 
         puts "Game Over\n\n"
+    end
+
+    def save_game()
+        save_file = File.open("save_game.yaml", "w") do |out|
+            YAML.dump(self, out)
+        end
+        puts "The game has been saved."
     end
 
     def store_letter(letter)
@@ -68,7 +83,13 @@ class Game
 
     def get_letter
         print "What letter do you want to guess? "
-        return gets.chomp.downcase
+        letter = gets.chomp.downcase
+        if letter == "1"
+            save_game()
+            return get_letter()
+        else
+            return letter
+        end
     end
 
     def check_letter(letter)
@@ -98,20 +119,41 @@ class Game
         puts "\n\n"
     end
 
-    def get_dict
-        txt = File.open("5desk.txt")
-        return txt.readlines.map(&:chomp)
-    end
 
-    def get_game_word
-        word = @dict[rand(@dict.length)]
+
+    def get_game_word(dict)
+        word = dict[rand(dict.length)]
 
         while word.length < 5 || word.length > 12 do
-            word = @dict[rand(@dict.length)].downcase
+            word = dict[rand(dict.length)].downcase
         end
 
         return word.split("")
     end
 end
 
-game1 = Game.new
+def query_game_load
+    print "Would you like to load the previous game? "
+    input = gets.chomp.downcase
+    until input == "yes" || input == "y" || input == "no" || input == "n" do
+        print "\n Please enter (yes/y) or (no/n): "
+        input = gets.chomp.downcase
+    end
+
+    if input == "yes" || input == "y"
+        return true
+    else
+        return false
+    end
+end
+
+def load_game
+    save_game = File.open("save_game.yaml", "r") do |object|
+        YAML.load(object)
+    end
+    return save_game
+end
+
+game = query_game_load() ? load_game() : Game.new(dict)
+
+game.game_loop()
